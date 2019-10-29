@@ -15,11 +15,11 @@ buildscript{
     }
 
     dependencies{
-        classpath 'org.eclipse.sw360.antenna:antenna-gradle-plugin:2.0.0-SNAPSHOT'
+        classpath 'org.eclipse.sw360.antenna:gradle-plugin:2.0.0-SNAPSHOT'
     }
 }
 
-apply plugin: org.eclipse.sw360.antenna.gradle.AntennaGradlePlugin
+apply plugin: org.eclipse.sw360.antenna.frontend.gradle.GradlePlugin
 //plugins {
 //    id 'antenna-bosch-gradle-plugin' version '2.0.0-SNAPSHOT'
 //}
@@ -30,6 +30,6 @@ repositories {
 }
 
 AntennaConfiguration{
-    pomPath 'pom.xml'
+    toolConfigurationPath 'pom.xml'
     debugEnabled = false
 }

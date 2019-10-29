@@ -15,17 +15,26 @@ buildscript{
     }
 
     dependencies{
-        classpath 'org.eclipse.sw360.antenna:antenna-gradle-plugin:1.0.0-SNAPSHOT'
+        classpath 'org.eclipse.sw360.antenna:gradle-plugin:1.0.0-SNAPSHOT'
     }
 }
 
-apply plugin: org.eclipse.sw360.antenna.gradle.AntennaBasicGradlePlugin
+plugins {
+    id 'java'
+}
+apply plugin: org.eclipse.sw360.antenna.frontend.gradle.GradlePlugin
+
+tasks.withType(Jar) {
+    destinationDir = file("$rootDir/build")
+}
 
 repositories {
     mavenLocal()
     mavenCentral()
 }
 
+version '1.0-SNAPSHOT'
+
 AntennaConfiguration{
-    pomPath 'pom.xml'
+    toolConfigurationPath 'pom.xml'
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Bosch Software Innovations GmbH 2018.
+ * Copyright (c) Bosch Software Innovations GmbH 2019.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
@@ -9,61 +9,96 @@
  * SPDX-License-Identifier: EPL-2.0
  */
 
+/*
+ * Standard Jenkinsfile to be easily applicable in
+ * a local Jenkins infrastructure
+ */
+
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(
+            name: 'BUILD_WITH_ANTENNA_P2',
+            defaultValue: true,
+            description: '')
+        booleanParam(
+            name: 'RUN_TESTS',
+            defaultValue: true,
+            description: '')
+    }
     stages {
-        stage('P2 download dependencies') {
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // handle the p2 dependency part (the stuff below ./antena-p2)
+        // this either gets created (if flag is true) or removed
+        stage('build deps for p2') {
+            when {
+                environment name: 'BUILD_WITH_ANTENNA_P2', value: 'true'
+            }
             steps {
                 withMaven() {
-                    dir("antenna-p2/dependencies") {
-                        sh 'mvn -B package'
-                    }
+                    sh "./modules/p2/prepareDependenciesForP2.sh"
+                }
+            }
+        }
+        stage('cleanup deps for p2') {
+            when {
+                environment name: 'BUILD_WITH_ANTENNA_P2', value: 'false'
+            }
+            steps {
+                withMaven() {
+                    sh "./modules/p2/cleanupDependenciesForP2.sh"
                 }
             }
         }
 
-        stage('P2 build') {
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // build antenna
+        stage('build') {
             steps {
                 withMaven() {
-                    dir("antenna-p2") {
-                        sh 'mvn -B package'
-                    }
+                    // build antenna
+                    sh """
+                      mvn -Dmaven.repo.local=\$(readlink -f localRepository) \
+                          --batch-mode \
+                          install -DskipTests
+                    """
                 }
             }
         }
 
-
-        stage('Clean') {
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // run tests and try to execute antenna
+        stage('test') {
+            when {
+                environment name: 'RUN_TESTS', value: 'true'
+            }
             steps {
                 withMaven() {
-                    sh 'mvn clean'
-                }
-            }
-        }
-        
-        stage('Build') {
-            steps {
-                withMaven() {
-                    sh 'mvn -B -DskipTests install'
-                }
-            }
-        }
-
-        stage('Test') {
-            steps {
-                withMaven() {
-                    sh 'mvn test'
-                }
-            }
-        }
-        
-        stage('Test-Site') {
-            steps {
-                dir("antenna-documentation") {
-                    withMaven() {
-                        sh 'mvn clean site -Psite-tests'
-                    }
+                    // run maven tests
+                    sh '''
+                      mvn -Dmaven.repo.local=$(readlink -f localRepository) \
+                        --batch-mode \
+                        test
+                    '''
+                    // test as maven plugin
+                    sh 'MAVEN_OPTS="-Dmaven.repo.local=$(readlink -f ./repository)" .ci-scripts/test-ExampleTestProject-with-maven.sh'
+                    // run SW360 integration tests, if corresponding sqldump is present
+                    sh '''
+                      if [[ -f modules/sw360/src/test/resources/postgres/sw360pgdb.sql ]]; then
+                          .ci-scripts/test-sw360-integration-test.sh
+                      fi
+                    '''
+                    // test as CLI tool
+                    sh '.ci-scripts/test-ExampleTestProject-with-CLI.sh'
+                    // test as gradle plugin
+                    sh 'M2_REPOSITORY="$(readlink -f ./repository)" .ci-scripts/test-ExampleTestProject-with-gradle.sh'
+                    // test the antenna site
+                    sh 'MAVEN_OPTS="-Dmaven.repo.local=$(readlink -f ./repository)" .ci-scripts/test-antenna-documentation-site-tests.sh'
+                    // run static code analysis
+                    sh '''
+                      mvn install -DskipTests pmd:pmd checkstyle:checkstyle-aggregate spotbugs:check -Dmaven.repo.local=$(readlink -f localRepository)
+                    '''
                 }
             }
         }

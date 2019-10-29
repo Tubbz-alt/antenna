@@ -10,18 +10,27 @@ Add the following step into the `<processors>` section of your workflow.xml
 ```xml
 <step>
     <name>SW360 Enricher</name>
-    <classHint>org.eclipse.sw360.antenna.workflow.processors.SW360Enricher</classHint>
+    <classHint>org.eclipse.sw360.antenna.sw360.workflow.processors.SW360Enricher</classHint>
     <configuration>
         <entry key="rest.server.url" value="http://localhost:8080/resource/api"/>
-        <entry key="auth.server.url" value="http://localhost:8080/authorization"/>
-        <entry key="username" value="admin@sw360.org"/>
-        <entry key="password" value="12345"/>
+        <entry key="auth.server.url" value="http://localhost:8080/authorization/oauth"/>
+        <entry key="user.id" value="admin@sw360.org"/>
+        <entry key="user.password" value="12345"/>
+        <entry key="client.id" value="trusted-sw360-client"/>
+        <entry key="client.password" value="sw360-secret"/>
+        <entry key="proxy.use" value="true"/>
     </configuration>
 </step>
 ```
 
 #### Explanation of parameters
 * `rest.server.url`: The REST API URL of your SW360 instance.
-* `auth.server.url`: The URL to the authenteication server of your SW360 instance.
-* `username`: The username of the user with which you want to send requests to the REST API.
-* `password`: The password of the user chosen above.
+* `auth.server.url`: The URL to the authentication server of your SW360 instance.
+* `user.id`: The username of the SW360 user to be used with the request.
+* `user.password`: The password of the SW360 user.
+* `client.id`: The REST API uses a two step authentication, this is general client id used.
+* `client.password`: The password of the client id.
+* `proxy.use`: Use proxy for communication to SW360.
+
+#### Data Model
+You can find a description of the data model mapping in the [SW360 data model](../sw360-data-model.html) section.

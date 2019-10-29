@@ -25,7 +25,7 @@ In case the tool configuration is used you have specify the configuration entrie
                         <processors>
                             <step>
                                 <name>Source Validator</name>
-                                <classHint>org.eclipse.sw360.antenna.workflow.processors.SourceValidator</classHint>
+                                <classHint>org.eclipse.sw360.antenna.validators.workflow.processors.SourceValidator</classHint>
                                 <configuration>
                                     <entry>
                                         <entryKey>missingSourcesSeverity</entryKey>
@@ -67,39 +67,40 @@ The following example shows a workflow with one analyzer, one additional process
 <workflow>
     <analyzers>
         <step>
-          <name>Example Analyzer</name>
-          <classHint>full.qualified.class.name</classHint>
-          <configuration>
-            <entry key="configuration_key_1" value="configuration_value_1" />
-            <entry key="configuration_key_2" value="configuration_value_2" />
-          </configuration>
+            <name>Example Analyzer</name>
+            <classHint>full.qualified.class.name</classHint>
+            <configuration>
+                <entry key="configuration_key_1" value="configuration_value_1" />
+                <entry key="configuration_key_2" value="configuration_value_2" />
+            </configuration>
         </step>
     </analyzers>
+    <processors>
+        <step>
+            <name>Arbitrary processor</name>
+            <classHint>full.qualified.processor.class.name</classHint>
+            <configuration>
+                <entry key="configuration_key_2" value="configuration_value_2" />
+            </configuration>
+        </step>
+    </processors>
     <generators>
         <step>
-          <name>First Generator</name>
-          <classHint>full.qualified.generator1.class.name</classHint>
-       <configuration>
-                  <entry key="configuration_key_1" value="configuration_value_1" />
-       </configuration>
+            <name>First Generator</name>
+            <classHint>full.qualified.generator1.class.name</classHint>
+            <configuration>
+                <entry key="configuration_key_1" value="configuration_value_1" />
+            </configuration>
         </step>
         <step>
-          <name>Second Generator</name>
-          <classHint>full.qualified.generator2.class.name</classHint>
+            <name>Second Generator</name>
+            <classHint>full.qualified.generator2.class.name</classHint>
         </step>
-      </generators>
-      <processors>
-        <step>
-          <name>Arbitrary processor</name>
-          <classHint>full.qualified.processor.class.name</classHint>
-          <configuration>
-                     <entry key="configuration_key_2" value="configuration_value_2" />
-          </configuration>
-        </step>
-      </processors>
+    </generators>
 </workflow>
 ```
-### Workflow order
+
+#[[##]]# Workflow order
 The order of workflow steps does not correspond to the order of definition in the workflow.
 Instead, each workflow step has a number assigned (`workflowStepOrder`), which determines their execution:
 Lower numbers will get executed first.
@@ -108,6 +109,26 @@ The `workflowStepOrder` is a java short value. By default, a configurable workfl
 A validator inheriting from `abstract-antenna-compliance-checker` will have a default `workflowStepOrder` of 10000 to ensure that validators run after enrichers.
 
 Warnings will be issued if two workflow steps have the same priority. In that case, the workflow steps will be executed in the order they were introduced in the workflow.
+The evaluated order, together with the used values for `workflowStepOrder`, is logged on INFO log level.
+
+One is able to override the order value corresponding to a workflow step using the `workflowStepOrder` tag. This could look something like
+
+```xml
+<workflow>
+    <processors>
+        <step>
+            <name>Arbitrary processor</name>
+            <classHint>full.qualified.processor.class.name</classHint>
+            <configuration>
+                <entry key="configuration_key_2" value="configuration_value_2" />
+            </configuration>
+            <workflowStepOrder>150</workflowStepOrder>
+        </step>
+    </processors>
+</workflow>
+```
+
+This would move the `Arbitrary processor` to the front, but not before e.g. the `AntennaConfHandler` with order number `0`.
 
 #[[##]]# Configuring default workflow steps
 
@@ -134,7 +155,7 @@ Since the ${docNameCap} tool is though to be used to enforce a company-wide stan
 The default workflow looks like this.
 
 ```
-antenna-basic-assembly/antenna-basic-configuration/src/main/resources/workflow.xml
+assembly/configuration/src/main/resources/workflow.xml
 ```
 
 The default workflow contains the general steps that should be performed for a project with respect to open source compliance management but leaves out configuration that is specific for your project. For that you need to adjust the workflow for your project. E.g. it might be that some workflow steps require credentials for external systems, you want to specify custom file paths or you want to add other steps to the workflow. This has to be performed in your custom workflow configuration.
@@ -166,6 +187,43 @@ The effective workflow will then consist of the entries of the default workflow 
 
 If you want to add custom workflow steps you need to have the implementation of the workflow step on the classpath. For that 
 you can use standard maven means. By configuring an additional dependency for the ${docNameCap} maven plugin you can provide any further workflow steps that are available as maven dependency.
+
+#[[##]]# Using the same workflow step twice
+
+It is possible to run the same workflow step, with a different configuration, twice, or more, within one ${docNameCap} run.
+In order to use the same workflow step twice, you simply have to add it another time to the workflow.
+
+```xml
+<workflow>
+    <analyzers>
+        <step>
+            <name>CSV Analyzer</name>
+            <classHint>org.eclipse.sw360.antenna.workflow.sources.analyzer.CsvAnalyzer</classHint>
+            <configuration>
+                <entry key="file.path" value="${basedir}/reportdata.csv" />
+                <entry key="base.dir" value="${project.build.directory}/sources"/>
+            </configuration>
+        </step>
+        <step>
+            <name>CSV Analyzer 2</name>
+            <classHint>org.eclipse.sw360.antenna.workflow.sources.analyzer.CsvAnalyzer</classHint>
+            <configuration>
+                <entry key="file.path" value="${basedir}/otherFile.csv" />
+                <entry key="base.dir" value="${project.build.directory}/otherFolder"/>
+            </configuration>
+        </step>
+    </analyzers>
+</workflow>
+```
+Here you need to be careful to change the `<name>` value of the workflow step, as demonstrated below with a second `Source Validator`.
+Should the two workflow steps not differ in the name, the configuration of the first workflow step would simply be overwritten with those of the second
+and the workflow step would only be executed once.
+
+Additionally, you need to add the default workflow configuration values, should you use a workflow step twice that has default configuration values provided by the default workflow.
+This is necessary since the default workflow configuration values are provided in the run by merging the workflow step configurations that have the same name.
+This is the reason why the repeated workflow steps need to differ in name and why the default configuration values are not also applied to the doubled and renamed workflow step.
+
+Note: It is important, that the classHints do not differ. We use them to identify the actual workflow step.
 
 #[[##]]# Configuring the workflow in the pom.xml
 

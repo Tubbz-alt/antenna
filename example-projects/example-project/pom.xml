@@ -67,7 +67,6 @@
                     <!-- Attach all build artifacts -->
                     <attachAll>true</attachAll>
 
-                    <disableP2Resolving>true</disableP2Resolving>
                     <!-- Here you configure the path on which Antenna will find the configuration files -->
                     <configFiles>
                         <param>${project.basedir}/src/antennaconf.xml</param>
@@ -77,7 +76,7 @@
                         <processors>
                             <step>
                                 <name>Source Validator</name>
-                                <classHint>org.eclipse.sw360.antenna.workflow.processors.SourceValidator</classHint>
+                                <classHint>org.eclipse.sw360.antenna.validators.workflow.processors.SourceValidator</classHint>
                                 <configuration>
                                     <entry>
                                         <entryKey>missingSourcesSeverity</entryKey>
@@ -125,7 +124,7 @@
                     <!-- The antenna mojo requires the kbase to fetch the license information -->
                     <dependency>
                         <groupId>org.eclipse.sw360.antenna</groupId>
-                        <artifactId>antenna-spdx-license-knowledge-base</artifactId>
+                        <artifactId>spdx-license-knowledge-base</artifactId>
                         <version>${org.eclipse.sw360.antenna.version}</version>
                     </dependency>
                     <dependency>

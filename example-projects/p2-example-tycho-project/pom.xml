@@ -30,6 +30,7 @@
         </repository>
     </repositories>
     <properties>
+        <org.eclipse.sw360.antenna.version>1.0.0-SNAPSHOT</org.eclipse.sw360.antenna.version>
         <tycho-version>1.0.0</tycho-version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -127,7 +128,7 @@
             <plugin>
                 <groupId>org.eclipse.sw360.antenna</groupId>
                 <artifactId>antenna-maven-plugin</artifactId>
-                <version>1.0.0-SNAPSHOT</version>
+                <version>${org.eclipse.sw360.antenna.version}</version>
                 <configuration>
                     <!-- The short name of the application -->
                     <productName>Antenna P2</productName>
@@ -165,7 +166,7 @@
                         <processors>
                             <step>
                                 <name>P2 Resolver</name>
-                                <classHint>org.eclipse.sw360.antenna.workflow.processors.enricher.P2Resolver</classHint>
+                                <classHint>org.eclipse.sw360.antenna.p2resolver.workflow.processors.enricher.P2Resolver</classHint>
                                 <configuration>
                                     <entry>
                                         <entryKey>repositories</entryKey>
