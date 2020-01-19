@@ -38,7 +38,7 @@ public class LicenseKnowledgeBaseResolver extends AbstractProcessor {
     private ILicenseManagementKnowledgeBase knowledgeBase;
 
     public LicenseKnowledgeBaseResolver() {
-        this.workflowStepOrder = 600;
+        this.workflowStepOrder = 9000;
     }
 
     public LicenseKnowledgeBaseResolver(ILicenseManagementKnowledgeBase knowledgeBase) {
@@ -134,9 +134,9 @@ public class LicenseKnowledgeBaseResolver extends AbstractProcessor {
 
     @Override
     public Collection<Artifact> process(Collection<Artifact> artifacts) {
-        LOGGER.info("Resolve knowledge base...");
+        LOGGER.debug("Resolve knowledge base...");
         resolveKnowledgeBase(artifacts);
-        LOGGER.info("Resolve knowledge base... done");
+        LOGGER.debug("Resolve knowledge base... done");
         return artifacts;
     }
 

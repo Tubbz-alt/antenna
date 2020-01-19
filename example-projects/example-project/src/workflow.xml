@@ -58,8 +58,14 @@
                 <entry key="client.id" value="trusted-sw360-client"/>
                 <entry key="client.password" value="sw360-secret"/>
                 <entry key="proxy.use" value="false"/>
+                <entry key="download.attachments" value="true"/>
+                <entry key="download.directory" value="${project.build.directory}/antenna/sources"/>
             </configuration>
             <deactivated>true</deactivated>
+        </step>
+        <step>
+            <name>ORT Downloader</name>
+            <classHint>org.eclipse.sw360.antenna.ort.workflow.processors.enricher.OrtDownloaderProcessor</classHint>
         </step>
     </processors>
     <generators>
@@ -78,14 +84,23 @@
             </configuration>
             <deactivated>true</deactivated>
         </step>
+        <step>
+            <name>Attribution Document</name>
+            <classHint>org.eclipse.sw360.antenna.attribution.document.workflow.generators.AttributionDocumentGenerator</classHint>
+            <configuration>
+                <entry key="attribution.doc.productName" value="Example Project"/>
+                <entry key="attribution.doc.productVersion" value="1.0.0"/>
+                <entry key="attribution.doc.copyrightHolder" value="Copyright (c) 2013-2019 Bosch Software Innovations GmbH"/>
+            </configuration>
+        </step>
     </generators>
     <outputHandlers>
         <step>
-            <name>Add disclosure document to jar</name>
+            <name>Add attribution document to jar</name>
             <classHint>org.eclipse.sw360.antenna.workflow.outputHandlers.FileToArchiveWriter</classHint>
             <configuration>
                 <entry key="instructions"
-                       value="disclosure-doc:${project.build.directory}/${project.artifactId}-${project.version}.jar:/legalnotice/DisclosureDoc.html"/>
+                       value="attribution-doc:${project.build.directory}/${project.artifactId}-${project.version}.jar:/legalnotice/AttributionDoc.html"/>
             </configuration>
         </step>
     </outputHandlers>

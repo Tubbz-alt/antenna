@@ -14,6 +14,8 @@ import org.eclipse.sw360.antenna.api.exceptions.ExecutionException;
 import org.eclipse.sw360.antenna.model.artifact.Artifact;
 import org.eclipse.sw360.antenna.sw360.rest.SW360ReleaseClient;
 import org.eclipse.sw360.antenna.sw360.rest.resource.SW360HalResourceUtility;
+import org.eclipse.sw360.antenna.sw360.rest.resource.attachments.SW360AttachmentType;
+import org.eclipse.sw360.antenna.sw360.rest.resource.attachments.SW360SparseAttachment;
 import org.eclipse.sw360.antenna.sw360.rest.resource.components.SW360Component;
 import org.eclipse.sw360.antenna.sw360.rest.resource.components.SW360ComponentEmbedded;
 import org.eclipse.sw360.antenna.sw360.rest.resource.releases.SW360Release;
@@ -68,31 +70,39 @@ public class SW360ReleaseClientAdapter {
 
         if (releaseFromArtifact.getComponentId() == null) {
             final SW360Component componentFromRelease = SW360ComponentAdapterUtils.createFromRelease(releaseFromArtifact);
-            final SW360Component componentFromSW360 = sw360ComponentClientAdapter.getOrCreateComponent(componentFromRelease, header);
-            if (componentFromSW360.get_Embedded().getReleases().stream()
-                    .map(SW360SparseRelease::getVersion)
-                    .anyMatch(releaseFromArtifact.getVersion()::equals)) {
-                throw new ExecutionException("The release already exists in the found component");
-            }
-
-            releaseFromArtifact.setComponentId(componentFromSW360.getComponentId());
+            final Optional<SW360Component> componentFromSW360 = sw360ComponentClientAdapter.getOrCreateComponent(componentFromRelease, header);
+            componentFromSW360.ifPresent(cfs -> {
+                if (cfs.get_Embedded().getReleases().stream()
+                        .map(SW360SparseRelease::getVersion)
+                        .anyMatch(releaseFromArtifact.getVersion()::equals)) {
+                    throw new ExecutionException("The release already exists in the found component");
+                }
+                releaseFromArtifact.setComponentId(cfs.getComponentId());
+            });
         }
 
-        final SW360Release releaseFromSW360 = releaseClient.createRelease(releaseFromArtifact, header);
-
-        final Optional<Path> sourceFile = releaseFromArtifact.getSourceFile();
-        if (uploadSource && sourceFile.isPresent()) {
-            return releaseClient.uploadAndAttachAttachment(releaseFromSW360, sourceFile.get(), "SOURCE", header);
-        } else {
-            return releaseFromSW360;
-        }
+        return releaseClient.createRelease(releaseFromArtifact, header);
     }
 
-    public SW360Release getReleaseById(String releaseId, HttpHeaders header) {
+    public SW360Release uploadAttachments(SW360Release sw360item, Map<Path, SW360AttachmentType> attachments, HttpHeaders header) {
+        for(Map.Entry<Path, SW360AttachmentType> attachment : attachments.entrySet()) {
+            if (!attachmentIsPotentialDuplicate(attachment.getKey(), sw360item.get_Embedded().getAttachments())) {
+                sw360item = releaseClient.uploadAndAttachAttachment(sw360item, attachment.getKey(), attachment.getValue(), header);
+            }
+        }
+        return sw360item;
+    }
+
+    private boolean attachmentIsPotentialDuplicate(Path attachment, List<SW360SparseAttachment> attachments) {
+        return attachments.stream()
+                .anyMatch(attachment1 -> attachment1.getFilename().equals(attachment.getFileName().toString()));
+    }
+
+    public Optional<SW360Release> getReleaseById(String releaseId, HttpHeaders header) {
         return releaseClient.getRelease(releaseId, header);
     }
 
-    public SW360Release enrichSparseRelease(SW360SparseRelease sparseRelease, HttpHeaders header) {
+    public Optional<SW360Release> enrichSparseRelease(SW360SparseRelease sparseRelease, HttpHeaders header) {
         return getReleaseById(sparseRelease.getReleaseId(), header);
     }
 
@@ -106,7 +116,9 @@ public class SW360ReleaseClientAdapter {
 
     public Optional<SW360Release> getRelease(SW360Release sw360ReleaseFromArtifact, HttpHeaders header) {
         return getSparseRelease(sw360ReleaseFromArtifact, header)
-                .map(sr -> enrichSparseRelease(sr, header));
+                .map(sr -> enrichSparseRelease(sr, header))
+                .filter(Optional::isPresent)
+                .map(Optional::get);
     }
 
     public Optional<SW360SparseRelease> getReleaseByExternalIds(Map<String,String> externalIds, HttpHeaders headers) {
@@ -142,9 +154,14 @@ public class SW360ReleaseClientAdapter {
                     .findFirst()
                     .flatMap(release -> SW360HalResourceUtility.getLastIndexOfSelfLink(release.get_Links()));
             if (releaseId.isPresent()) {
-                return Optional.of(getReleaseById(releaseId.get(), header));
+                return getReleaseById(releaseId.get(), header);
             }
         }
         return Optional.empty();
+    }
+
+    public Optional<Path> downloadAttachment(SW360Release release, SW360SparseAttachment attachment, Path downloadPath, HttpHeaders header) {
+        return Optional.ofNullable(release.get_Links().getSelf())
+                .flatMap(self -> releaseClient.downloadAttachment(self.getHref(), attachment, downloadPath, header));
     }
 }

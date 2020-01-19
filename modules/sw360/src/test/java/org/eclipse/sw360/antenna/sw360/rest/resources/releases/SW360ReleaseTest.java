@@ -10,19 +10,22 @@
  */
 package org.eclipse.sw360.antenna.sw360.rest.resources.releases;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import org.eclipse.sw360.antenna.sw360.rest.resource.attachments.SW360AttachmentType;
+import org.eclipse.sw360.antenna.sw360.rest.resource.attachments.SW360SparseAttachment;
 import org.eclipse.sw360.antenna.sw360.rest.resource.releases.SW360Release;
+import org.eclipse.sw360.antenna.sw360.rest.resources.SW360ResourcesTestUtils;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class SW360ReleaseTest {
-    public SW360Release prepareRelease() {
+public class SW360ReleaseTest extends SW360ResourcesTestUtils<SW360Release> {
+    @Override
+    public SW360Release prepareItem() {
         SW360Release release = new SW360Release();
         release.setName("Release Name");
         release.setVersion("1.2.3");
@@ -32,7 +35,24 @@ public class SW360ReleaseTest {
         release.setReleaseId("RELEASE_ID");
         release.setComponentId("COMPONENT_ID");
         release.setMainLicenseIds(Stream.of("MIT","BSD-3-Clause").collect(Collectors.toSet()));
+        ArrayList<SW360SparseAttachment> sparseAttachmentList = new ArrayList<>();
+        sparseAttachmentList.add(new SW360SparseAttachment().setFilename("").setAttachmentType(SW360AttachmentType.SOURCE));
+        release.get_Embedded().setAttachments(sparseAttachmentList);
         return release;
+    }
+
+    @Override
+    public SW360Release prepareItemWithoutOptionalInput() {
+        SW360Release release = new SW360Release();
+        release.setName("Release Name");
+        release.setVersion("1.2.3");
+        release.setComponentId("COMPONENT_ID");
+        return release;
+    }
+
+    @Override
+    public Class<SW360Release> getHandledClassType() {
+        return SW360Release.class;
     }
 
     @Test
@@ -71,27 +91,5 @@ public class SW360ReleaseTest {
         sw360Release1.mergeWith(sw360Release2);
 
         assertThat(sw360Release1.getCpeId()).isNotEqualTo(sw360Release2.getCpeId());
-    }
-
-    @Test
-    public void equalsTest() {
-        assertThat(prepareRelease())
-                .isEqualTo(prepareRelease());
-    }
-
-    @Test
-    public void serializationTest() throws Exception {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
-
-        final SW360Release release = prepareRelease();
-
-        final String jsonBody = objectMapper.writeValueAsString(release);
-        final SW360Release deserialized = objectMapper.readValue(jsonBody, SW360Release.class);
-
-        assertThat(deserialized.get_Embedded())
-                .isEqualTo(release.get_Embedded());
-        assertThat(deserialized)
-                .isEqualTo(release);
     }
 }

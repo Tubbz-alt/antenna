@@ -14,8 +14,6 @@ import org.eclipse.sw360.antenna.api.IAttachable;
 import org.eclipse.sw360.antenna.api.IEvaluationResult;
 import org.eclipse.sw360.antenna.api.exceptions.ExecutionException;
 import org.eclipse.sw360.antenna.api.workflow.*;
-import org.eclipse.sw360.antenna.model.artifact.Artifact;
-import org.eclipse.sw360.antenna.model.coordinates.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,18 +31,18 @@ public class AntennaWorkflow {
     private final List<AbstractOutputHandler> postSinksHooks;
 
     public AntennaWorkflow(AntennaWorkflowConfiguration antennaWFConfig) {
-        LOGGER.info("Initializing workflow ...");
+        LOGGER.debug("Initializing workflow ...");
         analyzers = antennaWFConfig.getAnalyzers();
         processors = antennaWFConfig.getProcessors();
         generators = antennaWFConfig.getGenerators();
         postSinksHooks = antennaWFConfig.getOutputHandlers();
-        LOGGER.info("Initializing workflow done\n");
+        LOGGER.debug("Initializing workflow done\n");
     }
 
     public Map<String, IAttachable> execute() {
         LOGGER.info("Workflow execution started ...");
         try {
-            LOGGER.info("Start collecting dependencies from");
+            LOGGER.debug("Start collecting dependencies from");
             Collection<WorkflowStepResult> sourcesResults = getArtifactsFromAnalyzers();
             ProcessingState processingState = new ProcessingState(sourcesResults);
             if (processingState.getArtifacts().isEmpty()) {
@@ -52,10 +50,10 @@ public class AntennaWorkflow {
                 return processingState.getAttachables();
             }
 
-            LOGGER.info("Process artifacts");
+            LOGGER.debug("Process artifacts");
             applyProcessors(processingState);
 
-            LOGGER.info("Generate output");
+            LOGGER.debug("Generate output");
             Map<String, IAttachable> generatedOutput = generateOutputViaGenerators(processingState);
 
             generatedOutput.putAll(processingState.getAttachables());
@@ -66,66 +64,43 @@ public class AntennaWorkflow {
             }
 
             if(postSinksHooks.size() > 0) {
-                LOGGER.info("Post process output");
+                LOGGER.debug("Post process output");
                 applyOutputPostHandler(generatedOutput);
             }
 
-            LOGGER.info("Workflow execution done");
             return generatedOutput;
-        } catch (ExecutionException tee) {
-            String msg = "Workflow execution failed!";
-            LOGGER.error(msg, tee);
-            throw tee;
         } finally {
-            LOGGER.info("Clean up workflow ...");
+            LOGGER.debug("Clean up workflow ...");
             cleanup();
-            LOGGER.info("Clean up workflow done");
+            LOGGER.debug("Clean up workflow done");
+            LOGGER.debug("Workflow execution done");
         }
     }
 
     private void logFailCausingResults(Map<String, Set<IEvaluationResult>> failCausingResults) {
-        LOGGER.error(makeStringForFailCausingResults(failCausingResults));
+        makeStringForFailCausingResults(failCausingResults).forEach(LOGGER::error);
     }
 
-    private String makeStringForFailCausingResults(Map<String, Set<IEvaluationResult>> failCausingResults) {
-        StringBuilder failCausingResultMessage = new StringBuilder("Build fails due to fail causing results \n");
+    private Collection<String> makeStringForFailCausingResults(Map<String, Set<IEvaluationResult>> failCausingResults) {
+        Collection<String> resultLines = new ArrayList<>();
+
+        resultLines.add("Build fails due to fail causing results");
 
         failCausingResults.forEach((workflowItemName, evaluationResults) ->
-                failCausingResultMessage.append(workflowItemName)
-                        .append(" ")
-                        .append(getEvaluationResultsAsString(evaluationResults))
-                        .append("\n"));
+                createResultLines(resultLines, workflowItemName, evaluationResults));
 
-        return failCausingResultMessage.toString();
+        return resultLines;
     }
 
-    private String getEvaluationResultsAsString(Set<IEvaluationResult> evaluationResults) {
-        return evaluationResults.stream()
-                .map(this::getEvaluationResultAsString)
-                .collect(Collectors.joining());
-    }
-
-    private String getEvaluationResultAsString(IEvaluationResult evaluationResult) {
-        return ": " + evaluationResult.getId()
-                + " failed with: \n    "
-                + evaluationResult.getDescription()
-                + " for artifacts: "
-                + getFailedArtifactsAsString(evaluationResult);
-    }
-
-    private String getFailedArtifactsAsString(IEvaluationResult evaluationResult) {
-        return evaluationResult.getFailedArtifacts().stream()
-                .map(Artifact::getMainCoordinate)
-                .map(c -> c.map(Coordinate::canonicalize))
-                .map(c -> c.orElse("UNKNOWN"))
-                .map(c -> "\n        - " + c)
-                .collect(Collectors.joining());
+    private void createResultLines(Collection<String> resultLines, String workflowItemName, Set<IEvaluationResult> evaluationResults) {
+        evaluationResults.stream()
+                .forEach(evalRes -> resultLines.add(String.format("%s: %s", workflowItemName, evalRes.resultAsMessage())));
     }
 
     private Collection<WorkflowStepResult> getArtifactsFromAnalyzers() {
         Collection<WorkflowStepResult> results = new HashSet<>();
         for(AbstractAnalyzer source : analyzers){
-            LOGGER.info("\nCollecting dependencies from source {}", source.getWorkflowItemName());
+            LOGGER.info("Run {}", source.getWorkflowItemName());
             results.add(source.yield());
         }
         return results;
@@ -133,7 +108,7 @@ public class AntennaWorkflow {
 
     private void applyProcessors(ProcessingState processingState) {
         for (AbstractProcessor processor : processors) {
-            LOGGER.info("Let {} process dependencies", processor.getWorkflowItemName());
+            LOGGER.info("Run {}", processor.getWorkflowItemName());
             processingState.applyWorkflowStepResult(processor.process(processingState));
         }
     }
@@ -151,7 +126,7 @@ public class AntennaWorkflow {
     private Map<String, IAttachable> generateOutputViaGenerators(ProcessingState processingState) {
         Map<String, IAttachable> generatedOutput = new HashMap<>();
         for (AbstractGenerator sink : generators) {
-            LOGGER.info("Let {} generate output", sink.getWorkflowItemName());
+            LOGGER.info("Run {}", sink.getWorkflowItemName());
             Map<String, IAttachable> oneGeneratedOutput = sink.produce(processingState);
             warnIfKeysCollide(sink, generatedOutput, oneGeneratedOutput);
             generatedOutput.putAll(oneGeneratedOutput);

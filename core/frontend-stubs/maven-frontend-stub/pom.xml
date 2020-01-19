@@ -1,5 +1,6 @@
 <!--
   ~ Copyright (c) Bosch Software Innovations GmbH 2016-2017.
+  ~ Copyright (c) Bosch.IO GmbH 2020.
   ~
   ~ All rights reserved. This program and the accompanying materials
   ~ are made available under the terms of the Eclipse Public License v2.0
@@ -38,6 +39,12 @@
             <groupId>org.eclipse.sw360.antenna</groupId>
             <artifactId>runtime</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.sw360.antenna</groupId>
+            <artifactId>maven-module</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.jvnet.jaxb2_commons</groupId>
@@ -196,6 +203,30 @@
             <groupId>com.github.spotbugs</groupId>
             <artifactId>spotbugs-annotations</artifactId>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jcl-over-slf4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ralfstuckert.pdfbox-layout</groupId>
+            <artifactId>pdfbox2-layout</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.heremaps.oss-review-toolkit</groupId>
+            <artifactId>downloader</artifactId>
         </dependency>
         <!-- ################################ testing dependencies ################################ -->
         <dependency>

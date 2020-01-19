@@ -25,7 +25,7 @@ import java.nio.file.*;
 import java.util.*;
 
 /**
- * Writes the disclosure document to the given archive
+ * Writes the attribution document to the given archive
  */
 public class FileToArchiveWriter extends AbstractOutputHandler {
 
@@ -74,7 +74,7 @@ public class FileToArchiveWriter extends AbstractOutputHandler {
         Path sourcePath = generatedOutput.get(key).getFile().toPath();
         Path pathInArchive = instruction.pathInArchive;
 
-        LOGGER.info("Write file=[{}] to artifact=[{}]", sourcePath, zipFile);
+        LOGGER.debug("Write file=[{}] to artifact=[{}]", sourcePath, zipFile);
 
         addFileToArchive(sourcePath, zipFile, pathInArchive);
     }

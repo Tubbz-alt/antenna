@@ -37,7 +37,7 @@
         <slf4j.version>1.7.26</slf4j.version>
         <spring.version>5.1.2.RELEASE</spring.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <ort.rev>f8d99920c9</ort.rev>
+        <ort.rev>3f85d301f7</ort.rev>
     </properties>
 
     <scm>
@@ -62,6 +62,7 @@
         <module>modules/simple-validators</module>
         <module>modules/p2</module>
         <module>modules/ort</module>
+        <module>modules/attribution-document</module>
         <!-- assembly -->
         <module>assembly</module>
         <!-- misc -->
@@ -248,7 +249,7 @@
             <dependency>
                 <groupId>org.spdx</groupId>
                 <artifactId>spdx-tools</artifactId>
-                <version>2.1.15</version>
+                <version>2.1.20</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.dataformat</groupId>
@@ -263,6 +264,11 @@
             <dependency>
                 <groupId>com.github.heremaps.oss-review-toolkit</groupId>
                 <artifactId>model</artifactId>
+                <version>${ort.rev}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.heremaps.oss-review-toolkit</groupId>
+                <artifactId>downloader</artifactId>
                 <version>${ort.rev}</version>
             </dependency>
             <dependency>
@@ -285,6 +291,31 @@
                 <artifactId>spotbugs-annotations</artifactId>
                 <version>3.1.12</version>
                 <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>1.12</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jcl-over-slf4j</artifactId>
+                <version>1.7.25</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>1.2.3</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.pdfbox</groupId>
+                <artifactId>pdfbox</artifactId>
+                <version>2.0.16</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ralfstuckert.pdfbox-layout</groupId>
+                <artifactId>pdfbox2-layout</artifactId>
+                <version>1.0.0</version>
             </dependency>
             <!-- ################################ testing dependencies ################################ -->
             <dependency>
@@ -321,6 +352,12 @@
                 <groupId>com.github.stefanbirkner</groupId>
                 <artifactId>system-rules</artifactId>
                 <version>1.19.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>5.5.2</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>

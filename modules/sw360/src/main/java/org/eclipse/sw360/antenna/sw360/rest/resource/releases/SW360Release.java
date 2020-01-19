@@ -19,7 +19,6 @@ import org.eclipse.sw360.antenna.sw360.rest.resource.SW360HalResourceUtility;
 import org.eclipse.sw360.antenna.sw360.rest.resource.Self;
 import org.eclipse.sw360.antenna.sw360.rest.resource.licenses.SW360SparseLicense;
 
-import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -36,11 +35,13 @@ public class SW360Release extends SW360HalResource<SW360ReleaseLinkObjects, SW36
     private static final String COPYRIGHTS_KEY = "copyrights";
     private static final String CLEARINGSTATE_KEY = "clearingState";
 
+    @JsonIgnore
+    private boolean isProprietary;
     private String name;
     private String version;
+    private String createdOn;
     private String cpeId;
     private String downloadurl;
-    private Optional<Path> sourceFile = Optional.empty();
     private final Map<String, String> externalIds = new HashMap<>();
     @JsonSerialize
     private final Map<String, String> additionalData = new HashMap<>();
@@ -92,6 +93,16 @@ public class SW360Release extends SW360HalResource<SW360ReleaseLinkObjects, SW36
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    public String getCreatedOn() {
+        return createdOn;
+    }
+
+    public SW360Release setCreatedOn(String createdOn) {
+        this.createdOn = createdOn;
+        return this;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public String getCpeId() {
         return cpeId;
     }
@@ -103,10 +114,10 @@ public class SW360Release extends SW360HalResource<SW360ReleaseLinkObjects, SW36
 
     @JsonIgnore
     public boolean isSetMainLicenseIds() {
-        return get_Embedded().getLicenses() != null;
+        return !get_Embedded().getLicenses().isEmpty();
     }
 
-    @JsonIgnore
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public Set<String> getMainLicenseIds() {
         return Optional.ofNullable(get_Embedded().getLicenses())
                 .map(lics -> lics
@@ -116,7 +127,6 @@ public class SW360Release extends SW360HalResource<SW360ReleaseLinkObjects, SW36
                 .orElse(Collections.emptySet());
     }
 
-    @JsonIgnore
     public SW360Release setMainLicenseIds(Set<String> mainLicenseIds) {
         if (mainLicenseIds.size() > 0) {
             List<SW360SparseLicense> licenses = mainLicenseIds.stream()
@@ -135,15 +145,6 @@ public class SW360Release extends SW360HalResource<SW360ReleaseLinkObjects, SW36
 
     public void setDownloadurl(String downloadurl) {
         this.downloadurl = downloadurl;
-    }
-
-    @JsonIgnore
-    public Optional<Path> getSourceFile() {
-        return sourceFile;
-    }
-
-    public void setSourceFile(Optional<Path> sourceFile) {
-        this.sourceFile = sourceFile;
     }
 
     @JsonIgnore
@@ -263,6 +264,17 @@ public class SW360Release extends SW360HalResource<SW360ReleaseLinkObjects, SW36
 
     public SW360Release setCopyrights(String copyrights) {
         additionalData.put(COPYRIGHTS_KEY, copyrights);
+        return this;
+    }
+
+    @JsonIgnore
+    public boolean isProprietary() {
+        return isProprietary;
+    }
+
+    @JsonIgnore
+    public SW360Release setProprietary(boolean proprietary) {
+        isProprietary = proprietary;
         return this;
     }
 

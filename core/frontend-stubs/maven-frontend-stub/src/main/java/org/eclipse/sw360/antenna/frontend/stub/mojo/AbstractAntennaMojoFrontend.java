@@ -1,5 +1,6 @@
 /*
  * Copyright (c) Bosch Software Innovations GmbH 2016-2017.
+ * Copyright (c) Bosch.IO GmbH 2020.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
@@ -39,6 +40,8 @@ import org.eclipse.sw360.antenna.api.exceptions.ExecutionException;
 import org.eclipse.sw360.antenna.core.AntennaCore;
 import org.eclipse.sw360.antenna.frontend.AntennaFrontend;
 import org.eclipse.sw360.antenna.frontend.AntennaFrontendHelper;
+import org.eclipse.sw360.antenna.maven.WrappedDependencyNodes;
+import org.eclipse.sw360.antenna.maven.WrappedMavenProject;
 import org.eclipse.sw360.antenna.model.xml.generated.Workflow;
 import org.eclipse.sw360.antenna.util.TemplateRenderer;
 import org.eclipse.sw360.antenna.workflow.WorkflowFileLoader;
@@ -96,7 +99,7 @@ public abstract class AbstractAntennaMojoFrontend extends AbstractMojo implement
     @Parameter(property = "skip", defaultValue = "false")
     private boolean skip;
 
-    // parameter for disclosure document
+    // parameter for attribution document
     @Parameter(property = "fullname", defaultValue = "${project.name}")
     private String productFullname;
 
@@ -115,8 +118,8 @@ public abstract class AbstractAntennaMojoFrontend extends AbstractMojo implement
     @Parameter(property = "copyrightNotice")
     private String copyrightNotice;
 
-    @Parameter(property = "disclosureDocumentNotes")
-    private String disclosureDocumentNotes;
+    @Parameter(property = "attributionDocumentNotes")
+    private String attributionDocumentNotes;
 
     @Parameter(property = "filesToAttach")
     private List<String> filesToAttach;
@@ -163,19 +166,19 @@ public abstract class AbstractAntennaMojoFrontend extends AbstractMojo implement
                     .filter(Proxy::isActive)
                     .peek(proxy -> {
                         if(!"http".equals(proxy.getProtocol())){
-                            LOGGER.info("Maven settings contain proxy with unsupportet protocol=[" + proxy.getProtocol() + "]");
+                            LOGGER.warn("Maven settings contain proxy with unsupportet protocol=[" + proxy.getProtocol() + "]");
                         }
                     })
                     .filter(proxy -> "http".equals(proxy.getProtocol()))
                     .filter(proxy -> "".equals(proxyId) || proxy.getId().equals(proxyId))
                     .peek(proxy -> {
                         if (proxyContainsUnsupportedConfiguration.test(proxy)) {
-                            LOGGER.info("Maven settings contain proxy configuration which can not be handled by antenna completely (e.g. authentication, nonProxyHosts)");
+                            LOGGER.warn("Maven settings contain proxy configuration which can not be handled by antenna completely (e.g. authentication, nonProxyHosts)");
                         }
                     })
                     .forEach(proxy -> {
                         if (proxy.getHost() != null && !"".equals(proxy.getHost()) && proxy.getPort() > 0) {
-                            LOGGER.info("Use proxy configuration with id=[" + proxy.getId() + "] from Maven settings");
+                            LOGGER.debug("Use proxy configuration with id=[" + proxy.getId() + "] from Maven settings");
                             proxyHost = proxy.getHost();
                             proxyPort = proxy.getPort();
                         }
@@ -202,16 +205,15 @@ public abstract class AbstractAntennaMojoFrontend extends AbstractMojo implement
         try {
             output.putAll(antennaCore.compose());
         } catch (ExecutionException e) {
-            LOGGER.error("Antenna execution failed due to:", e);
             throw new MojoExecutionException("Exception during Antenna execution", e);
         } finally {
             IAttachable report = antennaCore.writeAnalysisReport();
             output.put(IProcessingReporter.getIdentifier(), report);
 
-            LOGGER.info("Attaching artifacts to project");
+            LOGGER.debug("Attaching artifacts to project");
             ArtifactAttacher attacher = new ArtifactAttacher(context);
             attacher.attach(output);
-            LOGGER.info("Attaching artifacts to project..done");
+            LOGGER.debug("Attaching artifacts to project..done");
         }
     }
 
@@ -276,7 +278,7 @@ public abstract class AbstractAntennaMojoFrontend extends AbstractMojo implement
                 .setSkipAntennaExecution(skip)
                 .setMavenInstalled(true)  // when using the maven plugin, maven is surely available
                 .setCopyrightHoldersName(copyrightHoldersName).setCopyrightNotice(copyrightNotice)
-                .setDisclosureDocumentNotes(disclosureDocumentNotes).setWorkflow(finalWorkflow)
+                .setAttributionDocumentNotes(attributionDocumentNotes).setWorkflow(finalWorkflow)
                 .setProxyHost(proxyHost).setProxyPort(proxyPort)
                 .setShowCopyrightStatements(showCopyrightStatements).setEncoding(encodingCharSet);
 

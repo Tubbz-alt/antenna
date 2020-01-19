@@ -24,12 +24,12 @@
     <name>Antenna assembly</name>
 
     <modules>
+        <module>compliance-tool</module>
         <module>configuration</module>
         <module>cli</module>
         <module>maven-plugin</module>
         <module>gradle-plugin</module>
         <module>spdx-license-knowledge-base</module>
-        <module>common-rules</module>
     </modules>
 
 </project>

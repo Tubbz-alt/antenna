@@ -19,6 +19,8 @@ import org.eclipse.sw360.antenna.model.reporting.MessageType;
 import org.eclipse.sw360.antenna.model.xml.generated.License;
 import org.eclipse.sw360.antenna.model.xml.generated.LicenseInformation;
 import org.eclipse.sw360.antenna.sw360.SW360MetaDataReceiver;
+import org.eclipse.sw360.antenna.sw360.rest.resource.attachments.SW360AttachmentType;
+import org.eclipse.sw360.antenna.sw360.rest.resource.attachments.SW360SparseAttachment;
 import org.eclipse.sw360.antenna.sw360.rest.resource.licenses.SW360License;
 import org.eclipse.sw360.antenna.sw360.rest.resource.licenses.SW360SparseLicense;
 import org.eclipse.sw360.antenna.sw360.rest.resource.releases.SW360Release;
@@ -27,6 +29,7 @@ import org.eclipse.sw360.antenna.util.LicenseSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -37,28 +40,51 @@ public class SW360EnricherImpl {
 
     private final IProcessingReporter reporter;
     private final SW360MetaDataReceiver connector;
+    private final boolean downloadAttachments;
+    private final Path downloadPath;
 
-    public SW360EnricherImpl(IProcessingReporter reporter, SW360MetaDataReceiver connector) {
+    public SW360EnricherImpl(IProcessingReporter reporter, SW360MetaDataReceiver connector, boolean downloadAttachments, Path downloadPath) {
         this.reporter = reporter;
         this.connector = connector;
+        this.downloadAttachments = downloadAttachments;
+        this.downloadPath = downloadPath;
     }
 
     public Collection<Artifact> process(Collection<Artifact> intermediates) {
         for (Artifact artifact : intermediates) {
             Optional<SW360Release> release = connector.findReleaseForArtifact(artifact);
             if (release.isPresent()) {
-                final SW360Release sw360Release = release.get();
-
-                addSourceUrlIfAvailable(artifact, sw360Release);
-                addCPEIdIfAvailable(artifact, sw360Release);
-                addClearingStateIfAvailable(artifact, sw360Release);
-                mapExternalIdsOnSW360Release(sw360Release, artifact);
-                updateLicenses(artifact, sw360Release);
+                mapReleaseToArtifact(release.get(), artifact);
             } else {
                 warnAndReport(artifact, "No SW360 release found for artifact.", MessageType.PROCESSING_FAILURE);
             }
         }
         return intermediates;
+    }
+
+    private void mapReleaseToArtifact(SW360Release sw360Release, Artifact artifact) {
+        addSourceUrlIfAvailable(artifact, sw360Release);
+        addCPEIdIfAvailable(artifact, sw360Release);
+        addClearingStateIfAvailable(artifact, sw360Release);
+        mapExternalIdsOnArtifact(sw360Release, artifact);
+        updateLicenses(artifact, sw360Release);
+
+        if (downloadAttachments) {
+            downloadAttachments(sw360Release, artifact);
+        }
+    }
+
+    private void downloadAttachments(SW360Release sw360Release, Artifact artifact) {
+        List<SW360SparseAttachment> attachments = sw360Release.get_Embedded().getAttachments();
+
+        attachments.stream()
+                .filter(attachment -> attachment.getAttachmentType() == SW360AttachmentType.SOURCE)
+                .forEach(attachment -> mapSourceAttachmentOnArtifact(sw360Release, attachment, artifact));
+    }
+
+    private void mapSourceAttachmentOnArtifact(SW360Release sw360Release, SW360SparseAttachment attachment, Artifact artifact) {
+        Optional<Path> attachmentPath = connector.downloadAttachment(sw360Release, attachment, downloadPath);
+        attachmentPath.map( path -> artifact.addFact(new ArtifactSourceFile(path)));
     }
 
     private void addClearingStateIfAvailable(Artifact artifact, SW360Release release) {
@@ -68,7 +94,7 @@ public class SW360EnricherImpl {
         }
     }
 
-    private void mapExternalIdsOnSW360Release(SW360Release sw360Release, Artifact artifact) {
+    private void mapExternalIdsOnArtifact(SW360Release sw360Release, Artifact artifact) {
         artifact.addFact(mapCoordinates(sw360Release));
 
 
@@ -86,7 +112,7 @@ public class SW360EnricherImpl {
                     .map(ArtifactSoftwareHeritageID.Builder::build)
                     .ifPresent(artifact::addFact);
         } catch (IllegalArgumentException e) {
-            LOGGER.info(e.getMessage());
+            LOGGER.debug(e.getMessage());
         }
         sw360Release.getHashes().stream()
                 .map(hash -> new ArtifactFilename(null, hash))
@@ -147,14 +173,14 @@ public class SW360EnricherImpl {
 
         final SW360ReleaseEmbedded embedded = release.get_Embedded();
         if (embedded == null) {
-            LOGGER.info("No license information available in SW360.");
+            LOGGER.debug("No license information available in SW360.");
             return;
         }
         List<SW360SparseLicense> releaseLicenses = new ArrayList<>(embedded.getLicenses());
 
         if (!artifactLicenses.isEmpty()) {
             if (releaseLicenses.isEmpty()) {
-                LOGGER.info("License information available in antenna but not in SW360.");
+                LOGGER.debug("License information available in antenna but not in SW360.");
             } else {
                 updateLicenseInformation(artifactLicenses, releaseLicenses);
             }
@@ -174,7 +200,7 @@ public class SW360EnricherImpl {
             return updatedLicense.get();
         }
 
-        LOGGER.info("Could not get details for license " + sparseLicense.getFullName());
+        LOGGER.warn("Could not get details for license " + sparseLicense.getFullName());
         return license;
     }
 
@@ -190,7 +216,7 @@ public class SW360EnricherImpl {
     }
 
     private void warnAndReport(Artifact artifact, String message, MessageType messageType) {
-        LOGGER.warn(message);
+        LOGGER.debug(message);
         reporter.add(
                 artifact,
                 messageType,
